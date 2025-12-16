@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гра Alias</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen active">
+            <div class="container">
+                <h1>ALIAS</h1>
+                <p class="subtitle">Word Explanation Game</p>
+                
+                <button class="btn btn-primary" id="btn-new-game">New Game</button>
+                <button class="btn btn-secondary" id="btn-continue" style="display:none;">Continue</button>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen">
+            <div class="container">
+                <h2>Game Settings</h2>
+                
+                <div class="form-group">
+                    <label>Room Name:</label>
+                    <input type="text" id="room-name" placeholder="Enter room name" value="Room 1">
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Players (2-10):</label>
+                    <input type="number" id="player-count" min="2" max="10" value="4">
+                </div>
+
+                <div class="form-group">
+                    <label>Round Time (seconds):</label>
+                    <input type="number" id="round-time" min="10" max="120" value="60">
+                </div>
+
+                <div class="form-group">
+                    <label>Target Score:</label>
+                    <input type="number" id="target-score" min="10" max="500" value="100">
+                </div>
+
+                <button class="btn btn-primary" id="btn-start-game">Start Game</button>
+                <button class="btn btn-secondary" id="btn-back-home">Back</button>
+            </div>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="screen">
+            <div class="container">
+                <h2>Add Players</h2>
+                <p id="room-title"></p>
+                
+                <div class="form-group">
+                    <input type="text" id="player-name-input" placeholder="Player name" autofocus>
+                    <button class="btn btn-primary" id="btn-add-player">Add</button>
+                </div>
+
+                <div class="players-list">
+                    <h3>Players (<span id="player-count-display">0</span>/<span id="max-players-display">4</span>):</h3>
+                    <ul id="players-list"></ul>
+                </div>
+
+                <button class="btn btn-primary" id="btn-game-ready" disabled>Start Game</button>
+                <button class="btn btn-secondary" id="btn-back-settings">Back</button>
+            </div>
+        </div>
+
+        <!-- Game Board -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <div class="game-info">
+                    <div>Round: <span id="round-number">1</span></div>
+                    <div>Player: <span id="current-player-name">-</span></div>
+                </div>
+                <div class="game-timer">
+                    <div class="timer" id="timer">60</div>
+                </div>
+                <div class="game-score">
+                    <div>Points: <span id="current-score">0</span></div>
+                </div>
+            </div>
+
+            <div class="game-board">
+                <div class="word-card">
+                    <div class="word" id="current-word">-</div>
+                    <div class="hint" id="current-hint">-</div>
+                </div>
+
+                <div class="game-controls">
+                    <button class="btn btn-success" id="btn-skip">Skip</button>
+                    <button class="btn btn-success" id="btn-correct">Correct!</button>
+                    <button class="btn btn-danger" id="btn-pause">Pause</button>
+                </div>
+            </div>
+
+            <div class="score-board">
+                <h4>Round Scores:</h4>
+                <div id="current-round-scores"></div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen">
+            <div class="container">
+                <h2>Game Over!</h2>
+                
+                <div class="results-table">
+                    <h3>Final Results:</h3>
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Points</th>
+                                <th>Guessed</th>
+                                <th>Skipped</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="results-actions">
+                    <button class="btn btn-primary" id="btn-play-again">Play Again</button>
+                    <button class="btn btn-secondary" id="btn-home">Home</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

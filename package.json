@@ -1,0 +1,24 @@
+{
+  "name": "alias-game",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Simple word-explanation game (Alias) for 2-10 players",
+  "keywords": [
+    "alias",
+    "word-game",
+    "party-game",
+    "javascript"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "dev": "python -m http.server 8000"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  }
+}
