@@ -1,4 +1,3 @@
-// ===== GAME DATA =====
 const WORDS = [
     { word: 'Adjust', hint: 'To adjust means to change something slightly to improve comfort or function.' },
     { word: 'Adjust(chair height)', hint: 'To adjust chair height means to raise or lower a chair for comfort.' },
@@ -245,12 +244,10 @@ const WORDS = [
     { word: 'Wrong', hint: 'Wrong means inaccurate or mistaken.' }
 ];
 
-// Shuffle function
 function shuffleArray(arr) {
     return [...arr].sort(() => Math.random() - 0.5);
 }
 
-// ===== STATE =====
 let gameState = {
     settings: {},
     players: [],
@@ -262,15 +259,32 @@ let gameState = {
     currentRoundScores: {},
     gameActive: false,
     timerInterval: null,
-    selectedWordIndices: WORDS.map((_, i) => i) // All words selected by default
+    selectedWordIndices: WORDS.map((_, i) => i),
+    showHints: true,
+    currentWordIndex: -1,
+    remainingTime: 0
 };
 
-// ===== UTILITY FUNCTIONS =====
 function generateId() {
     return '_' + Math.random().toString(36).substr(2, 9);
 }
 
-// Simple sound helper using WebAudio (no external files required)
+function getRandomWordIndex() {
+    const availableIndices = gameState.selectedWordIndices.filter(idx =>
+        !gameState.guessedWordIndices.includes(idx) &&
+        !gameState.skippedWordIndices.includes(idx)
+    );
+
+    if (availableIndices.length === 0) {
+        if (gameState.selectedWordIndices.length === 0) return -1;
+        gameState.guessedWordIndices = [];
+        gameState.skippedWordIndices = [];
+        return getRandomWordIndex();
+    }
+
+    const shuffled = shuffleArray(availableIndices);
+    return shuffled[0];
+}
 function playSound(type) {
     try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -296,25 +310,19 @@ function playSound(type) {
         g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
         o.stop(now + dur + 0.02);
 
-        // Close context after a short delay to free resources
         setTimeout(() => { try { ctx.close(); } catch(e){} }, (dur + 0.1) * 1000);
     } catch (e) {
-        // ignore audio errors (e.g., autoplay policy) silently
+
     }
 }
 
-function shuffleArray(arr) {
-    return [...arr].sort(() => Math.random() - 0.5);
-}
-
 function getRandomWords(count) {
-    // Get selected words that haven't been used
+
     const availableIndices = gameState.selectedWordIndices.filter(idx => 
         !gameState.guessedWordIndices.includes(idx) && 
         !gameState.skippedWordIndices.includes(idx)
     );
 
-    // If no available words, reset and start over
     if (availableIndices.length === 0) {
         gameState.guessedWordIndices = [];
         gameState.skippedWordIndices = [];
@@ -323,17 +331,15 @@ function getRandomWords(count) {
 
     const shuffled = shuffleArray(availableIndices);
     const selected = shuffled.slice(0, Math.min(count, availableIndices.length));
-    
+
     return selected.map(idx => WORDS[idx]);
 }
 
-// ===== SCREEN MANAGEMENT =====
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
 }
 
-// ===== HOME SCREEN =====
 function initHomeScreen() {
     document.getElementById('btn-new-game').addEventListener('click', () => {
         showScreen('settings-screen');
@@ -350,10 +356,15 @@ function initHomeScreen() {
     }
 }
 
-// ===== SETTINGS SCREEN =====
 function initSettingsScreen() {
     document.getElementById('btn-back-home').addEventListener('click', () => {
         showScreen('home-screen');
+    });
+
+    const showHintsToggle = document.getElementById('show-hints-toggle');
+
+    showHintsToggle.addEventListener('change', (e) => {
+        gameState.showHints = e.target.checked;
     });
 
     document.getElementById('btn-edit-words').addEventListener('click', () => {
@@ -393,7 +404,6 @@ function initSettingsScreen() {
     });
 }
 
-// ===== LOBBY SCREEN =====
 function initLobbyScreen() {
     document.getElementById('btn-add-player').addEventListener('click', addPlayer);
     document.getElementById('player-name-input').addEventListener('keypress', (e) => {
@@ -474,7 +484,6 @@ function removePlayer(playerId) {
     updatePlayersList();
 }
 
-// ===== GAME SCREEN =====
 function initGameScreen() {
     document.getElementById('btn-skip').addEventListener('click', skipWord);
     document.getElementById('btn-correct').addEventListener('click', correctWord);
@@ -483,25 +492,36 @@ function initGameScreen() {
 
 function startRound() {
     gameState.currentRoundScores = {};
-    gameState.players.forEach(p => {
-        gameState.currentRoundScores[p.id] = 0;
-    });
-    
+    gameState.players.forEach(p => gameState.currentRoundScores[p.id] = 0);
+
     gameState.currentPlayerIndex = 0;
+    gameState.roundNumber = 1;
+    gameState.currentWordIndex = -1;
+
+    gameState.remainingTime = gameState.settings.roundTime || 60;
+
     nextWord();
     startTimer();
+    gameState.gameActive = true;
 }
 
 function nextWord() {
-    const words = getRandomWords(1);
-    if (words.length === 0) {
+    const idx = getRandomWordIndex();
+    if (idx === -1) {
         endGame();
         return;
     }
 
-    const word = words[0];
-    document.getElementById('current-word').textContent = word.word;
-    document.getElementById('current-hint').textContent = word.hint;
+    gameState.currentWordIndex = idx;
+    const wordObj = WORDS[idx];
+
+    document.getElementById('current-word').textContent = wordObj.word;
+
+    if (gameState.showHints) {
+        document.getElementById('current-hint').textContent = wordObj.hint;
+    } else {
+        document.getElementById('current-hint').textContent = '-';
+    }
 
     updateGameInfo();
 }
@@ -521,54 +541,33 @@ function updateGameInfo() {
 }
 
 function skipWord() {
-    const currentWordIdx = gameState.selectedWordIndices[WORDS.findIndex(w => 
-        w === document.getElementById('current-word').textContent
-    )];
-    
     const player = gameState.players[gameState.currentPlayerIndex];
-    player.skipped++;
-    
-    // Track skipped word
-    const word = document.getElementById('current-word').textContent;
-    const wordIdx = WORDS.findIndex(w => w.word === word);
-    if (wordIdx >= 0 && !gameState.skippedWordIndices.includes(wordIdx)) {
-        gameState.skippedWordIndices.push(wordIdx);
+    player.skipped = (player.skipped || 0) + 1;
+
+    const idx = gameState.currentWordIndex;
+    if (idx >= 0 && !gameState.skippedWordIndices.includes(idx)) {
+        gameState.skippedWordIndices.push(idx);
     }
+
     playSound('skip');
-    
     nextPlayerTurn();
 }
 
 function correctWord() {
     const player = gameState.players[gameState.currentPlayerIndex];
-    player.solved++;
-    gameState.currentRoundScores[player.id] = (gameState.currentRoundScores[player.id] || 0) + 1;
 
-    // Track guessed word
-    const word = document.getElementById('current-word').textContent;
-    const wordIdx = WORDS.findIndex(w => w.word === word);
-    if (wordIdx >= 0 && !gameState.guessedWordIndices.includes(wordIdx)) {
-        gameState.guessedWordIndices.push(wordIdx);
+    player.solved = (player.solved || 0) + 1;
+
+    gameState.currentRoundScores[player.id] = (gameState.currentRoundScores[player.id] || 0) + 1;
+    player.score = (player.score || 0) + 1;
+
+    const idx = gameState.currentWordIndex;
+    if (idx >= 0 && !gameState.guessedWordIndices.includes(idx)) {
+        gameState.guessedWordIndices.push(idx);
     }
 
     playSound('success');
 
-    if (player.score + gameState.currentRoundScores[player.id] >= gameState.settings.targetScore) {
-        endGame();
-        return;
-    }
-
-    nextWord();
-}
-
-function nextPlayerTurn() {
-    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
-    
-    if (gameState.currentPlayerIndex === 0) {
-        gameState.roundNumber++;
-    }
-
-    const player = gameState.players[gameState.currentPlayerIndex];
     if (player.score >= gameState.settings.targetScore) {
         endGame();
         return;
@@ -577,27 +576,61 @@ function nextPlayerTurn() {
     nextWord();
 }
 
+function nextPlayerTurn() {
+
+    gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameState.players.length;
+
+    if (gameState.currentPlayerIndex === 0) {
+        gameState.roundNumber++;
+    }
+
+    const target = gameState.settings.targetScore || Infinity;
+    if (gameState.players.some(p => (p.score || 0) >= target)) {
+        endGame();
+        return;
+    }
+
+    nextWord();
+}
+
 function pauseGame() {
+    if (gameState.timerInterval) {
+        clearInterval(gameState.timerInterval);
+        gameState.timerInterval = null;
+    }
     gameState.gameActive = false;
-    clearInterval(gameState.timerInterval);
     playSound('pause');
+
     alert('Game paused. Click OK to continue.');
     gameState.gameActive = true;
     startTimer();
 }
 
 function startTimer() {
-    let timeLeft = gameState.settings.roundTime;
-    document.getElementById('timer').textContent = timeLeft;
+
+    if (gameState.timerInterval) {
+        clearInterval(gameState.timerInterval);
+        gameState.timerInterval = null;
+    }
+
+    if (!gameState.remainingTime || gameState.remainingTime <= 0) {
+        gameState.remainingTime = gameState.settings.roundTime || 60;
+    }
+
+    document.getElementById('timer').textContent = gameState.remainingTime;
 
     gameState.timerInterval = setInterval(() => {
-        timeLeft--;
-        document.getElementById('timer').textContent = timeLeft;
+        gameState.remainingTime--;
+        document.getElementById('timer').textContent = gameState.remainingTime;
 
-        if (timeLeft <= 0) {
+        if (gameState.remainingTime <= 0) {
             clearInterval(gameState.timerInterval);
+            gameState.timerInterval = null;
+            gameState.remainingTime = 0;
+
             nextPlayerTurn();
-            startTimer();
+
+            if (gameState.gameActive) startTimer();
         }
     }, 1000);
 }
@@ -614,7 +647,6 @@ function endGame() {
     showResults();
 }
 
-// ===== RESULTS SCREEN =====
 function initResultsScreen() {
     document.getElementById('btn-play-again').addEventListener('click', () => {
         showScreen('home-screen');
@@ -627,7 +659,7 @@ function initResultsScreen() {
 
 function showResults() {
     const sorted = [...gameState.players].sort((a, b) => b.score - a.score);
-    
+
     let html = '';
     sorted.forEach(p => {
         html += `
@@ -644,7 +676,6 @@ function showResults() {
     showScreen('results-screen');
 }
 
-// ===== INITIALIZATION =====
 function showWordsSelection() {
     showScreen('words-screen');
     renderWordsList();
@@ -663,7 +694,7 @@ function renderWordsList(searchTerm = '') {
         const isSelected = gameState.selectedWordIndices.includes(idx);
         const div = document.createElement('div');
         div.className = 'word-item';
-        
+
         div.innerHTML = `
             <input type="checkbox" id="word-${idx}" ${isSelected ? 'checked' : ''}>
             <label for="word-${idx}">${word}</label>
@@ -732,7 +763,6 @@ function applyRangeSelection() {
         return;
     }
 
-    // convert to 0-based indices
     from = from - 1;
     to = to - 1;
 
