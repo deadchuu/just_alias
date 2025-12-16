@@ -386,7 +386,70 @@ p {
     margin: 0;
 }
 
-/* ===== RESPONSIVE ===== */
+/* ===== WORDS SELECTION ===== */
+.words-controls {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 14px;
+    margin: 0;
+}
+
+.words-list-container {
+    background: var(--light);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin: 20px 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.words-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.word-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--white);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.word-item:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.word-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.word-item label {
+    flex: 1;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--dark);
+}
+
+#selected-count {
+    font-weight: 600;
+    color: var(--primary);
+}
 @media (max-width: 600px) {
     h1 {
         font-size: 36px;

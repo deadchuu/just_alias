@@ -256,10 +256,13 @@ let gameState = {
     players: [],
     currentPlayerIndex: 0,
     roundNumber: 1,
-    usedWords: [],
+    usedWordIndices: [],
+    guessedWordIndices: [],
+    skippedWordIndices: [],
     currentRoundScores: {},
     gameActive: false,
-    timerInterval: null
+    timerInterval: null,
+    selectedWordIndices: WORDS.map((_, i) => i) // All words selected by default
 };
 
 // ===== UTILITY FUNCTIONS =====
@@ -272,18 +275,23 @@ function shuffleArray(arr) {
 }
 
 function getRandomWords(count) {
-    const available = WORDS.filter((_, idx) => !gameState.usedWords.includes(idx));
-    if (available.length === 0) {
-        // Reset and start over
-        gameState.usedWords = [];
-        return shuffleArray(WORDS).slice(0, count);
+    // Get selected words that haven't been used
+    const availableIndices = gameState.selectedWordIndices.filter(idx => 
+        !gameState.guessedWordIndices.includes(idx) && 
+        !gameState.skippedWordIndices.includes(idx)
+    );
+
+    // If no available words, reset and start over
+    if (availableIndices.length === 0) {
+        gameState.guessedWordIndices = [];
+        gameState.skippedWordIndices = [];
+        return getRandomWords(count);
     }
-    const selected = shuffleArray(available).slice(0, count);
-    selected.forEach(word => {
-        const idx = WORDS.indexOf(word);
-        if (idx >= 0) gameState.usedWords.push(idx);
-    });
-    return selected;
+
+    const shuffled = shuffleArray(availableIndices);
+    const selected = shuffled.slice(0, Math.min(count, availableIndices.length));
+    
+    return selected.map(idx => WORDS[idx]);
 }
 
 // ===== SCREEN MANAGEMENT =====
@@ -315,6 +323,10 @@ function initSettingsScreen() {
         showScreen('home-screen');
     });
 
+    document.getElementById('btn-edit-words').addEventListener('click', () => {
+        showWordsSelection();
+    });
+
     document.getElementById('btn-start-game').addEventListener('click', () => {
         const settings = {
             roomName: document.getElementById('room-name').value,
@@ -328,11 +340,18 @@ function initSettingsScreen() {
             return;
         }
 
+        if (gameState.selectedWordIndices.length === 0) {
+            alert('Select at least one word!');
+            return;
+        }
+
         gameState.settings = settings;
         gameState.players = [];
         gameState.currentRoundScores = {};
         gameState.currentPlayerIndex = 0;
         gameState.roundNumber = 1;
+        gameState.guessedWordIndices = [];
+        gameState.skippedWordIndices = [];
 
         document.getElementById('max-players-display').textContent = settings.playerCount;
         document.getElementById('room-title').textContent = `Room: ${settings.roomName}`;
@@ -469,8 +488,20 @@ function updateGameInfo() {
 }
 
 function skipWord() {
+    const currentWordIdx = gameState.selectedWordIndices[WORDS.findIndex(w => 
+        w === document.getElementById('current-word').textContent
+    )];
+    
     const player = gameState.players[gameState.currentPlayerIndex];
     player.skipped++;
+    
+    // Track skipped word
+    const word = document.getElementById('current-word').textContent;
+    const wordIdx = WORDS.findIndex(w => w.word === word);
+    if (wordIdx >= 0 && !gameState.skippedWordIndices.includes(wordIdx)) {
+        gameState.skippedWordIndices.push(wordIdx);
+    }
+    
     nextPlayerTurn();
 }
 
@@ -478,6 +509,13 @@ function correctWord() {
     const player = gameState.players[gameState.currentPlayerIndex];
     player.solved++;
     gameState.currentRoundScores[player.id] = (gameState.currentRoundScores[player.id] || 0) + 1;
+
+    // Track guessed word
+    const word = document.getElementById('current-word').textContent;
+    const wordIdx = WORDS.findIndex(w => w.word === word);
+    if (wordIdx >= 0 && !gameState.guessedWordIndices.includes(wordIdx)) {
+        gameState.guessedWordIndices.push(wordIdx);
+    }
 
     if (player.score + gameState.currentRoundScores[player.id] >= gameState.settings.targetScore) {
         endGame();
@@ -569,9 +607,85 @@ function showResults() {
     showScreen('results-screen');
 }
 
+// ===== INITIALIZATION =====
+function showWordsSelection() {
+    showScreen('words-screen');
+    renderWordsList();
+}
+
+function renderWordsList(searchTerm = '') {
+    const listContainer = document.getElementById('words-list');
+    listContainer.innerHTML = '';
+
+    WORDS.forEach((item, idx) => {
+        const word = item.word;
+        if (searchTerm && !word.toLowerCase().includes(searchTerm.toLowerCase())) {
+            return;
+        }
+
+        const isSelected = gameState.selectedWordIndices.includes(idx);
+        const div = document.createElement('div');
+        div.className = 'word-item';
+        
+        div.innerHTML = `
+            <input type="checkbox" id="word-${idx}" ${isSelected ? 'checked' : ''}>
+            <label for="word-${idx}">${word}</label>
+        `;
+
+        div.querySelector('input').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                if (!gameState.selectedWordIndices.includes(idx)) {
+                    gameState.selectedWordIndices.push(idx);
+                }
+            } else {
+                gameState.selectedWordIndices = gameState.selectedWordIndices.filter(i => i !== idx);
+            }
+            updateSelectedCount();
+        });
+
+        listContainer.appendChild(div);
+    });
+
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const count = gameState.selectedWordIndices.length;
+    document.getElementById('selected-count').textContent = `Selected: ${count}/${WORDS.length}`;
+}
+
+function initWordsScreen() {
+    document.getElementById('btn-select-all').addEventListener('click', () => {
+        gameState.selectedWordIndices = WORDS.map((_, i) => i);
+        renderWordsList(document.getElementById('word-search').value);
+    });
+
+    document.getElementById('btn-deselect-all').addEventListener('click', () => {
+        gameState.selectedWordIndices = [];
+        renderWordsList(document.getElementById('word-search').value);
+    });
+
+    document.getElementById('word-search').addEventListener('input', (e) => {
+        renderWordsList(e.target.value);
+    });
+
+    document.getElementById('btn-confirm-words').addEventListener('click', () => {
+        if (gameState.selectedWordIndices.length === 0) {
+            alert('Select at least one word!');
+            return;
+        }
+        showScreen('settings-screen');
+    });
+
+    document.getElementById('btn-back-settings-words').addEventListener('click', () => {
+        showScreen('settings-screen');
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     initHomeScreen();
     initSettingsScreen();
+    initWordsScreen();
     initLobbyScreen();
     initGameScreen();
     initResultsScreen();

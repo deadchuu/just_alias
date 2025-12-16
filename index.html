@@ -44,8 +44,35 @@
                     <input type="number" id="target-score" min="10" max="500" value="100">
                 </div>
 
+                <button class="btn btn-primary" id="btn-edit-words">Edit Word List</button>
                 <button class="btn btn-primary" id="btn-start-game">Start Game</button>
                 <button class="btn btn-secondary" id="btn-back-home">Back</button>
+            </div>
+        </div>
+
+        <!-- Word Selection Screen -->
+        <div id="words-screen" class="screen">
+            <div class="container">
+                <h2>Select Words for Game</h2>
+                
+                <div class="form-group">
+                    <input type="text" id="word-search" placeholder="Search words...">
+                </div>
+
+                <div class="words-controls">
+                    <button class="btn btn-small" id="btn-select-all">Select All</button>
+                    <button class="btn btn-small" id="btn-deselect-all">Deselect All</button>
+                    <span id="selected-count">Selected: 0/252</span>
+                </div>
+
+                <div class="words-list-container">
+                    <div id="words-list" class="words-list"></div>
+                </div>
+
+                <div class="results-actions">
+                    <button class="btn btn-primary" id="btn-confirm-words">Confirm Selection</button>
+                    <button class="btn btn-secondary" id="btn-back-settings-words">Back</button>
+                </div>
             </div>
         </div>
 
