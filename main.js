@@ -270,6 +270,39 @@ function generateId() {
     return '_' + Math.random().toString(36).substr(2, 9);
 }
 
+// Simple sound helper using WebAudio (no external files required)
+function playSound(type) {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+
+        let freq = 440;
+        let dur = 0.08;
+        if (type === 'success') { freq = 880; dur = 0.12; }
+        else if (type === 'skip') { freq = 260; dur = 0.08; }
+        else if (type === 'pause') { freq = 440; dur = 0.06; }
+
+        o.type = 'sine';
+        o.frequency.value = freq;
+
+        const now = ctx.currentTime;
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.5, now + 0.01);
+        o.start(now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        o.stop(now + dur + 0.02);
+
+        // Close context after a short delay to free resources
+        setTimeout(() => { try { ctx.close(); } catch(e){} }, (dur + 0.1) * 1000);
+    } catch (e) {
+        // ignore audio errors (e.g., autoplay policy) silently
+    }
+}
+
 function shuffleArray(arr) {
     return [...arr].sort(() => Math.random() - 0.5);
 }
@@ -501,6 +534,7 @@ function skipWord() {
     if (wordIdx >= 0 && !gameState.skippedWordIndices.includes(wordIdx)) {
         gameState.skippedWordIndices.push(wordIdx);
     }
+    playSound('skip');
     
     nextPlayerTurn();
 }
@@ -516,6 +550,8 @@ function correctWord() {
     if (wordIdx >= 0 && !gameState.guessedWordIndices.includes(wordIdx)) {
         gameState.guessedWordIndices.push(wordIdx);
     }
+
+    playSound('success');
 
     if (player.score + gameState.currentRoundScores[player.id] >= gameState.settings.targetScore) {
         endGame();
@@ -544,6 +580,7 @@ function nextPlayerTurn() {
 function pauseGame() {
     gameState.gameActive = false;
     clearInterval(gameState.timerInterval);
+    playSound('pause');
     alert('Game paused. Click OK to continue.');
     gameState.gameActive = true;
     startTimer();
@@ -669,6 +706,8 @@ function initWordsScreen() {
         renderWordsList(e.target.value);
     });
 
+    document.getElementById('btn-apply-range').addEventListener('click', applyRangeSelection);
+
     document.getElementById('btn-confirm-words').addEventListener('click', () => {
         if (gameState.selectedWordIndices.length === 0) {
             alert('Select at least one word!');
@@ -680,6 +719,33 @@ function initWordsScreen() {
     document.getElementById('btn-back-settings-words').addEventListener('click', () => {
         showScreen('settings-screen');
     });
+}
+
+function applyRangeSelection() {
+    const fromEl = document.getElementById('range-from');
+    const toEl = document.getElementById('range-to');
+    let from = parseInt(fromEl.value, 10);
+    let to = parseInt(toEl.value, 10);
+
+    if (isNaN(from) || isNaN(to)) {
+        alert('Enter valid numeric range.');
+        return;
+    }
+
+    // convert to 0-based indices
+    from = from - 1;
+    to = to - 1;
+
+    if (from < 0 || to < 0 || from >= WORDS.length || to >= WORDS.length || from > to) {
+        alert('Range out of bounds or invalid.');
+        return;
+    }
+
+    gameState.selectedWordIndices = [];
+    for (let i = from; i <= to; i++) gameState.selectedWordIndices.push(i);
+
+    renderWordsList(document.getElementById('word-search').value);
+    updateSelectedCount();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
